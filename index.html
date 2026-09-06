@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#050507" />
+  <title>With You Photo Frame</title>
+  <style>
+    :root {
+      --bg: #050507;
+      --panel: #11131a;
+      --panel-2: #181b24;
+      --line: rgba(255,255,255,.12);
+      --text: #ffffff;
+      --muted: #9aa0aa;
+      --accent: #12d6ff;
+      --accent-2: #7a5cff;
+      --danger: #ff5d73;
+      --ok: #38d996;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: Arial, Helvetica, sans-serif; }
+    body { min-height: 100vh; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      width: min(100%, 560px);
+      margin: 0 auto;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top right, rgba(122,92,255,.18), transparent 28%),
+        radial-gradient(circle at top left, rgba(18,214,255,.14), transparent 25%),
+        var(--bg);
+      padding-bottom: 28px;
+    }
+
+    .hero {
+      padding: calc(env(safe-area-inset-top) + 28px) 20px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: .18em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    h1 { margin: 0; font-size: clamp(30px, 8vw, 48px); line-height: .95; text-transform: uppercase; }
+    .subtitle { color: var(--muted); margin: 12px 0 0; line-height: 1.45; }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4,1fr);
+      gap: 7px;
+      padding: 16px 18px 4px;
+    }
+
+    .step {
+      height: 6px;
+      border-radius: 999px;
+      background: #252a35;
+      overflow: hidden;
+    }
+    .step.active { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+
+    .screen { display: none; padding: 18px; }
+    .screen.active { display: block; }
+
+    .card {
+      background: rgba(17,19,26,.86);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.28);
+      backdrop-filter: blur(12px);
+    }
+
+    .card h2 { margin: 0 0 8px; font-size: 24px; }
+    .card p { margin: 0 0 18px; color: var(--muted); line-height: 1.5; }
+
+    .primary, .secondary, .ghost {
+      width: 100%;
+      border: 0;
+      border-radius: 16px;
+      padding: 16px 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
+    .secondary { background: var(--panel-2); color: #fff; border: 1px solid var(--line); }
+    .ghost { background: transparent; color: var(--accent); border: 1px solid rgba(18,214,255,.35); }
+    .danger { color: #fff; background: rgba(255,93,115,.12); border: 1px solid rgba(255,93,115,.3); }
+
+    .stack { display: grid; gap: 12px; }
+
+    .photo-box, .preview-box {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 9/16;
+      border-radius: 24px;
+      overflow: hidden;
+      background: #0c0e13;
+      border: 1px dashed rgba(255,255,255,.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .photo-box img, .preview-box img { width: 100%; height: 100%; object-fit: cover; }
+
+    .empty-state { padding: 28px; text-align: center; color: var(--muted); }
+    .empty-icon { font-size: 52px; margin-bottom: 14px; }
+
+    .error { color: var(--danger); margin-top: 10px; font-size: 13px; display: none; }
+    .error.show { display: block; }
+
+    .frames {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 9px;
+      margin-top: 15px;
+    }
+
+    .frame-option {
+      position: relative;
+      aspect-ratio: 9/16;
+      border-radius: 14px;
+      overflow: hidden;
+      padding: 0;
+      background: #0a0c10;
+      border: 2px solid transparent;
+    }
+    .frame-option.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(18,214,255,.16); }
+    .frame-option img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .frame-preview { position: relative; width: min(72vw, 310px); aspect-ratio: 9/16; margin: 0 auto; overflow: hidden; border-radius: 20px; }
+    .frame-preview .frame-layer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; object-fit: fill; pointer-events: none; }
+    .frame-preview .selfie-layer {
+      position: absolute;
+      left: 12.9%; top: 11.9%; width: 74.2%; height: 76.6%;
+      object-fit: cover; z-index: 1;
+    }
+
+    .note { margin-top: 12px; color: var(--muted); font-size: 12px; text-align: center; line-height: 1.45; }
+    .success { color: var(--ok); font-size: 13px; text-align: center; display: none; }
+    .success.show { display: block; }
+
+    canvas { display: none; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div class="eyebrow">With You Agency</div>
+      <h1>Photo Frame</h1>
+      <p class="subtitle">Scatta una foto, scegli la cornice dell'evento e salva o condividi il risultato.</p>
+    </header>
+
+    <div class="steps" aria-hidden="true">
+      <div class="step active" data-step="0"></div>
+      <div class="step" data-step="1"></div>
+      <div class="step" data-step="2"></div>
+      <div class="step" data-step="3"></div>
+    </div>
+
+    <section class="screen active" data-screen="0">
+      <div class="card">
+        <h2>1. Scatta la foto</h2>
+        <p>Usa la fotocamera frontale oppure scegli una foto verticale dalla galleria.</p>
+
+        <input id="cameraInput" type="file" accept="image/*" capture="user" hidden>
+        <input id="galleryInput" type="file" accept="image/*" hidden>
+
+        <div class="photo-box" id="photoBox">
+          <div class="empty-state" id="emptyPhoto">
+            <div class="empty-icon">◎</div>
+            <div>Nessuna foto selezionata</div>
+          </div>
+          <img id="selectedPhoto" alt="Foto selezionata" hidden>
+        </div>
+
+        <div id="photoError" class="error">Seleziona una foto verticale.</div>
+
+        <div class="stack" style="margin-top:14px">
+          <button class="primary" id="openCameraBtn">Apri fotocamera</button>
+          <button class="secondary" id="openGalleryBtn">Scegli dalla galleria</button>
+          <button class="ghost" id="toFramesBtn" disabled>Continua</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="1">
+      <div class="card">
+        <h2>2. Scegli la cornice</h2>
+        <p>Puoi sostituire questi file PNG con le grafiche del cliente.</p>
+
+        <div class="frame-preview">
+          <img class="selfie-layer" id="frameSelfie" alt="Selfie">
+          <img class="frame-layer" id="frameMain" src="images/frames/frame1.svg" alt="Cornice">
+        </div>
+
+        <div class="frames">
+          <button class="frame-option selected" data-frame="1"><img src="images/frames/frame1.svg" alt="Cornice 1"></button>
+          <button class="frame-option" data-frame="2"><img src="images/frames/frame2.svg" alt="Cornice 2"></button>
+          <button class="frame-option" data-frame="3"><img src="images/frames/frame3.svg" alt="Cornice 3"></button>
+          <button class="frame-option" data-frame="4"><img src="images/frames/frame4.svg" alt="Cornice 4"></button>
+        </div>
+
+        <div class="stack" style="margin-top:16px">
+          <button class="primary" id="generateBtn">Crea foto</button>
+          <button class="secondary" id="backToPhotoBtn">Indietro</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="2">
+      <div class="card">
+        <h2>3. Anteprima</h2>
+        <p>La foto finale viene generata in formato 1080 × 1920 px.</p>
+        <div class="preview-box">
+          <img id="finalPreview" alt="Foto finale">
+        </div>
+        <div class="stack" style="margin-top:16px">
+          <button class="primary" id="downloadBtn">Scarica foto</button>
+          <button class="secondary" id="shareBtn">Condividi</button>
+          <button class="ghost" id="changeFrameBtn">Cambia cornice</button>
+        </div>
+        <div id="shareStatus" class="success">Foto pronta.</div>
+        <div class="note">Su alcuni browser desktop il pulsante Condividi potrebbe non essere disponibile: in quel caso usa Scarica foto.</div>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="3">
+      <div class="card">
+        <h2>4. Fatto</h2>
+        <p>La tua foto è pronta. Puoi creare una nuova foto in qualsiasi momento.</p>
+        <button class="primary" id="restartBtn">Nuova foto</button>
+      </div>
+    </section>
+
+    <canvas id="canvas" width="1080" height="1920"></canvas>
+  </main>
+
+<script>
+(() => {
+  const cameraInput = document.getElementById('cameraInput');
+  const galleryInput = document.getElementById('galleryInput');
+  const openCameraBtn = document.getElementById('openCameraBtn');
+  const openGalleryBtn = document.getElementById('openGalleryBtn');
+  const toFramesBtn = document.getElementById('toFramesBtn');
+  const selectedPhoto = document.getElementById('selectedPhoto');
+  const emptyPhoto = document.getElementById('emptyPhoto');
+  const photoError = document.getElementById('photoError');
+  const frameSelfie = document.getElementById('frameSelfie');
+  const frameMain = document.getElementById('frameMain');
+  const generateBtn = document.getElementById('generateBtn');
+  const finalPreview = document.getElementById('finalPreview');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const shareBtn = document.getElementById('shareBtn');
+  const backToPhotoBtn = document.getElementById('backToPhotoBtn');
+  const changeFrameBtn = document.getElementById('changeFrameBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const shareStatus = document.getElementById('shareStatus');
+
+  let selfieDataUrl = null;
+  let selectedFrame = 1;
+  let finalDataUrl = null;
+
+  const framePath = id => `images/frames/frame${id}.svg`;
+
+  function showScreen(index) {
+    document.querySelectorAll('.screen').forEach((el, i) => el.classList.toggle('active', i === index));
+    document.querySelectorAll('.step').forEach((el, i) => el.classList.toggle('active', i <= index));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  function drawCover(context, image, dx, dy, dw, dh) {
+    const scale = Math.max(dw / image.width, dh / image.height);
+    const sw = dw / scale;
+    const sh = dh / scale;
+    const sx = (image.width - sw) / 2;
+    const sy = (image.height - sh) / 2;
+    context.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
+  }
+
+  function handlePhoto(file) {
+    if (!file) return;
+    photoError.classList.remove('show');
+
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      if (img.height <= img.width) {
+        URL.revokeObjectURL(objectUrl);
+        photoError.classList.add('show');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        selfieDataUrl = reader.result;
+        selectedPhoto.src = selfieDataUrl;
+        selectedPhoto.hidden = false;
+        emptyPhoto.hidden = true;
+        frameSelfie.src = selfieDataUrl;
+        toFramesBtn.disabled = false;
+        URL.revokeObjectURL(objectUrl);
+      };
+      reader.readAsDataURL(file);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      photoError.classList.add('show');
+    };
+
+    img.src = objectUrl;
+  }
+
+  async function generateFinalImage() {
+    if (!selfieDataUrl) return;
+    generateBtn.disabled = true;
+    generateBtn.textContent = 'Creazione...';
+
+    try {
+      canvas.width = 1080;
+      canvas.height = 1920;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#050507';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const selfie = await loadImage(selfieDataUrl);
+      const frame = await loadImage(framePath(selectedFrame));
+
+      // Area fotografica ricostruita dal layout di riferimento.
+      drawCover(ctx, selfie, 139, 228, 802, 1471);
+      ctx.drawImage(frame, 0, 0, 1080, 1920);
+
+      finalDataUrl = canvas.toDataURL('image/png');
+      finalPreview.src = finalDataUrl;
+      shareStatus.classList.add('show');
+      showScreen(2);
+    } catch (err) {
+      console.error(err);
+      alert('Non è stato possibile generare la foto. Riprova.');
+    } finally {
+      generateBtn.disabled = false;
+      generateBtn.textContent = 'Crea foto';
+    }
+  }
+
+  function dataUrlToFile(dataUrl, filename) {
+    const parts = dataUrl.split(',');
+    const mime = parts[0].match(/:(.*?);/)[1];
+    const binary = atob(parts[1]);
+    const arr = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+    return new File([arr], filename, { type: mime });
+  }
+
+  openCameraBtn.addEventListener('click', () => cameraInput.click());
+  openGalleryBtn.addEventListener('click', () => galleryInput.click());
+  cameraInput.addEventListener('change', e => {
+    handlePhoto(e.target.files?.[0]);
+    e.target.value = '';
+  });
+  galleryInput.addEventListener('change', e => {
+    handlePhoto(e.target.files?.[0]);
+    e.target.value = '';
+  });
+
+  toFramesBtn.addEventListener('click', () => showScreen(1));
+  backToPhotoBtn.addEventListener('click', () => showScreen(0));
+  changeFrameBtn.addEventListener('click', () => showScreen(1));
+  generateBtn.addEventListener('click', generateFinalImage);
+
+  document.querySelectorAll('.frame-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedFrame = Number(btn.dataset.frame);
+      document.querySelectorAll('.frame-option').forEach(x => x.classList.remove('selected'));
+      btn.classList.add('selected');
+      frameMain.src = framePath(selectedFrame);
+    });
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!finalDataUrl) return;
+    const a = document.createElement('a');
+    a.href = finalDataUrl;
+    a.download = `with-you-photo-${Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showScreen(3);
+  });
+
+  shareBtn.addEventListener('click', async () => {
+    if (!finalDataUrl) return;
+    const file = dataUrlToFile(finalDataUrl, `with-you-photo-${Date.now()}.png`);
+
+    if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+      try {
+        await navigator.share({
+          title: 'With You Photo Frame',
+          text: 'La mia foto dell\'evento',
+          files: [file]
+        });
+        showScreen(3);
+      } catch (err) {
+        if (err?.name !== 'AbortError') console.error(err);
+      }
+    } else {
+      alert('La condivisione diretta non è disponibile su questo browser. Usa “Scarica foto”.');
+    }
+  });
+
+  restartBtn.addEventListener('click', () => {
+    selfieDataUrl = null;
+    finalDataUrl = null;
+    selectedFrame = 1;
+    selectedPhoto.hidden = true;
+    selectedPhoto.removeAttribute('src');
+    emptyPhoto.hidden = false;
+    frameSelfie.removeAttribute('src');
+    frameMain.src = framePath(1);
+    toFramesBtn.disabled = true;
+    photoError.classList.remove('show');
+    shareStatus.classList.remove('show');
+    document.querySelectorAll('.frame-option').forEach((x, i) => x.classList.toggle('selected', i === 0));
+    showScreen(0);
+  });
+})();
+</script>
+</body>
+</html>
